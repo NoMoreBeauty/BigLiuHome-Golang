@@ -82,8 +82,8 @@ func (imp *MealInterfaceImp) GetMealById(id, userId int32) (*model.MealModel, er
 // GetMealsCalendar 用于日历高亮，查询一个月那几天有帖子
 func (imp *MealInterfaceImp) GetMealsCalendar(year, month int) ([]string, error) {
 
-	// 1. 计算该月的起止 Unix 时间戳（上海时区，秒级）
-	loc, _ := time.LoadLocation("Asia/Shanghai")
+	// 1. 计算该月的起止 Unix 时间戳
+	loc := time.FixedZone("CST", 8*3600) // CST 代表中国标准时间，8*3600 表示东八区偏离秒数  不能用time.LoadLocation，因为部署在docker里，golang:1.17.1-alpine这个镜像默认没有安装系统的时区数据库 (tzdata)
 	startTime := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, loc)
 	endTime := startTime.AddDate(0, 1, 0) // 下月第一天 00:00:00
 	startTs := startTime.Unix()

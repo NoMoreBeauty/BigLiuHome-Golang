@@ -30,6 +30,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			user, err := auth.UserImp.Login(userKey)
 			if err != nil {
+				res.Code = -1
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					res.ErrorMsg = "用户不存在"
 				} else {

@@ -1,17 +1,44 @@
 package model
 
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
+	"fmt"
+)
+
+// StringArray 自定义类型，实现与 MySQL JSON 字段的自动转换
+type StringArray []string
+
+// Scan 实现 sql.Scanner 接口，用于从数据库读出 JSON 时解析回 []string
+func (a *StringArray) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("Failed to unmarshal JSON value:", value))
+	}
+	return json.Unmarshal(bytes, a)
+}
+
+// Value 实现 driver.Valuer 接口，用于存入数据库时将 []string 转为 JSON 字节
+func (a StringArray) Value() (driver.Value, error) {
+	if len(a) == 0 {
+		return "[]", nil
+	}
+	return json.Marshal(a)
+}
+
 // MealModel 三餐帖子数据模型
 type MealModel struct {
-	Id            int32    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	UserId        int32    `gorm:"column:user_id" json:"user_id"`
-	UserName      string   `gorm:"column:user_name" json:"user_name"`
-	MealType      string   `gorm:"column:meal_type" json:"meal_type"`
-	Images        []string `gorm:"column:images;serializer:json" json:"images"`
-	Description   string   `gorm:"column:description" json:"description"`
-	LikesCount    int32    `gorm:"column:likes_count" json:"likes_count"`
-	CommentsCount int32    `gorm:"column:comments_count" json:"comments_count"`
-	CreatedAt     int64    `gorm:"column:created_at" json:"created_at"`
-	IsLiked       bool     `gorm:"column:is_liked;->" json:"is_liked"` // 添加只读的 is_liked 动态计算字段，Insert和Update不受影响
+	Id            int32       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	UserId        int32       `gorm:"column:user_id" json:"user_id"`
+	UserName      string      `gorm:"column:user_name" json:"user_name"`
+	MealType      string      `gorm:"column:meal_type" json:"meal_type"`
+	Images        StringArray `gorm:"column:images" json:"images"`
+	Description   string      `gorm:"column:description" json:"description"`
+	LikesCount    int32       `gorm:"column:likes_count" json:"likes_count"`
+	CommentsCount int32       `gorm:"column:comments_count" json:"comments_count"`
+	CreatedAt     int64       `gorm:"column:created_at" json:"created_at"`
+	IsLiked       bool        `gorm:"column:is_liked;->" json:"is_liked"` // 添加只读的 is_liked 动态计算字段，Insert和Update不受影响
 }
 
 // MealCommentModel 三餐帖子评论模型

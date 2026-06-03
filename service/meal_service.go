@@ -46,6 +46,15 @@ type MealData struct {
 	Size  int32              `json:"size"`
 }
 
+// MealsCalendarResponse
+type MealsCalendarResponse struct {
+	Code     int    `json:"code"` // -1表示失败、0表示查询成功、1表示插入成果
+	ErrorMsg string `json:"errorMsg,omitempty"`
+	Data     struct {
+		Dates []string `json:"dates"`
+	} `json:"data"`
+}
+
 // GetMealsHandler 查询三餐帖子列表接口
 func GetMealsHandler(w http.ResponseWriter, r *http.Request) {
 	res := &MealsResponse{}
@@ -130,6 +139,38 @@ func GetMealDetailHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(msg)
 }
 
+// GetMealsCalendarHandler 用于日历高亮，查询一个月那几天有帖子
+func GetMealsCalendarHandler(w http.ResponseWriter, r *http.Request) {
+	res := &MealsCalendarResponse{}
+	if r.Method == http.MethodGet {
+		year, err := strconv.Atoi(r.URL.Query().Get("year"))
+		month, err := strconv.Atoi(r.URL.Query().Get("month"))
+		if err != nil || month <= 0 || month >= 13 || year <= 0 || year >= 2100 {
+			res.Code = -1
+			res.ErrorMsg = "日期格式错误"
+		} else {
+			dates, err := meal.MealImp.GetMealsCalendar(year, month)
+			if err != nil {
+				res.Code = -1
+				res.ErrorMsg = err.Error()
+			} else {
+				res.Data.Dates = dates
+			}
+		}
+	} else {
+		res.Code = -1
+		res.ErrorMsg = fmt.Sprintf("请求方法 %s 不支持", r.Method)
+	}
+
+	msg, err := json.Marshal(res)
+	if err != nil {
+		fmt.Fprint(w, "内部错误")
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(msg)
+}
+
 // parseGetMealsRequest 解析查询三餐帖子请求
 func parseGetMealsRequest(r *http.Request) (*GetMealsRequest, error) {
 	req := &GetMealsRequest{}
@@ -163,6 +204,7 @@ func parseGetMealsRequest(r *http.Request) (*GetMealsRequest, error) {
 			return nil, fmt.Errorf("date must be in format YYYY-MM-DD, err=%s", err.Error())
 		}
 	}
+	req.Date = date // 将解析结果赋值给 req，否则日期过滤永远不生效
 
 	// 解析餐点类型
 	mealType := r.URL.Query().Get("meal_type")
@@ -173,7 +215,9 @@ func parseGetMealsRequest(r *http.Request) (*GetMealsRequest, error) {
 			return nil, fmt.Errorf("meal_type must be one of: breakfast, lunch, dinner")
 		}
 	}
+	req.MealType = mealType // 将解析结果赋值给 req，否则餐类过滤永远不生效
 	return req, nil
+
 }
 
 // parseGPostMealRequest 解析插入三餐帖子请求

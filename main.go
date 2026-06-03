@@ -22,6 +22,7 @@ func main() {
 	r.HandleFunc("/api/count", service.CounterHandler).Methods("GET", "POST")
 	r.HandleFunc("/api/login", service.AuthHandler).Methods("GET")
 	r.HandleFunc("/api/meals", service.GetMealsHandler).Methods("GET", "POST")
+	r.HandleFunc("/api/meals/calendar", service.GetMealsCalendarHandler).Methods("GET")
 
 	// 动态路由
 	r.HandleFunc("/api/meals/{id:[0-9]+}", service.GetMealDetailHandler).Methods("GET")

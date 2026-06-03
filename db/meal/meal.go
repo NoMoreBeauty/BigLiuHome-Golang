@@ -78,3 +78,26 @@ func (imp *MealInterfaceImp) GetMealById(id, userId int32) (*model.MealModel, er
 
 	return &meal, nil // 返回指针
 }
+
+// GetMealsCalendar 用于日历高亮，查询一个月那几天有帖子
+func (imp *MealInterfaceImp) GetMealsCalendar(year, month int) ([]string, error) {
+
+	// 1. 计算该月的起止 Unix 时间戳（上海时区，秒级）
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	startTime := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, loc)
+	endTime := startTime.AddDate(0, 1, 0) // 下月第一天 00:00:00
+	startTs := startTime.Unix()
+	endTs := endTime.Unix()
+
+	// 2. 使用 Pluck 直接查询并扫描进 slice
+	var dates []string
+	cli := db.Get()
+	err := cli.Table("meals").
+		Where("created_at >= ? AND created_at < ?", startTs, endTs).
+		Order("DATE(FROM_UNIXTIME(created_at)) ASC").
+		Pluck("DISTINCT DATE(FROM_UNIXTIME(created_at))", &dates).Error
+	if err != nil {
+		return nil, err
+	}
+	return dates, nil
+}

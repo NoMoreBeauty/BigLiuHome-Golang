@@ -73,19 +73,12 @@ func GetMealsHandler(w http.ResponseWriter, r *http.Request) {
 			res.Code = -1
 			res.ErrorMsg = err.Error()
 		} else {
-			// 要做图片类型的转化来适配mysql的json字段
-			imagesByte, err := json.Marshal(req.Images)
+			err = meal.MealImp.PostMeals(req.UserId, req.UserName, req.MealType, req.Images, req.Description)
 			if err != nil {
 				res.Code = -1
 				res.ErrorMsg = err.Error()
 			} else {
-				err = meal.MealImp.PostMeals(req.UserId, req.UserName, req.MealType, imagesByte, req.Description)
-				if err != nil {
-					res.Code = -1
-					res.ErrorMsg = err.Error()
-				} else {
-					res.Code = 1
-				}
+				res.Code = 1
 			}
 		}
 	} else {

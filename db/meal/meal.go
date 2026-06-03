@@ -46,13 +46,8 @@ func (imp *MealInterfaceImp) GetMeals(page, size, userId int32, date, mealType s
 }
 
 // PostMeals 上传三餐帖子
-func (imp *MealInterfaceImp) PostMeals(userId int32, userName, mealType string, images []byte, description string) error {
+func (imp *MealInterfaceImp) PostMeals(userId int32, userName, mealType string, images []string, description string) error {
 	cli := db.Get()
-
-	// 防御性处理：如果 images 为空，默认给一个空 JSON 数组的字节流 "[]"
-	if len(images) == 0 {
-		images = []byte("[]")
-	}
 
 	var meal = &model.MealModel{
 		UserId:      userId,

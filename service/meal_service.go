@@ -9,6 +9,7 @@ import (
 
 	"wxcloudrun-golang/db/meal"
 	"wxcloudrun-golang/db/model"
+	"wxcloudrun-golang/logger"
 
 	"github.com/gorilla/mux"
 )
@@ -57,19 +58,25 @@ type MealsCalendarResponse struct {
 
 // GetMealsHandler 查询三餐帖子列表接口
 func GetMealsHandler(w http.ResponseWriter, r *http.Request) {
+	const mod = "帖子服务"
+	start := time.Now()
 	res := &MealsResponse{}
 	if r.Method == http.MethodGet {
 		req, err := parseGetMealsRequest(r)
 		if err != nil {
+			logger.Warn(mod, "解析帖子列表请求失败", "err", err)
 			res.Code = -1
 			res.ErrorMsg = err.Error()
 		} else {
+			logger.Info(mod, "查询帖子列表", "userId", req.UserId, "page", req.Page, "size", req.Size, "date", req.Date, "mealType", req.MealType)
 			// 查询帖子
 			meals, err := meal.MealImp.GetMeals(req.Page, req.Size, req.UserId, req.Date, req.MealType)
 			if err != nil {
+				logger.Error(mod, "查询帖子列表失败", "userId", req.UserId, "err", err)
 				res.Code = -1
 				res.ErrorMsg = err.Error()
 			} else {
+				logger.Info(mod, "查询帖子列表成功", "userId", req.UserId, "count", len(meals), "耗时", time.Since(start))
 				res.Data.List = meals
 				res.Data.Total = int32(len(meals))
 				res.Data.Page = req.Page
@@ -79,14 +86,18 @@ func GetMealsHandler(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost {
 		req, err := parsePostMealRequest(r)
 		if err != nil {
+			logger.Warn(mod, "解析发布帖子请求失败", "err", err)
 			res.Code = -1
 			res.ErrorMsg = err.Error()
 		} else {
+			logger.Info(mod, "收到发布帖子请求", "userId", req.UserId, "userName", req.UserName, "mealType", req.MealType, "imageCount", len(req.Images))
 			err = meal.MealImp.PostMeals(req.UserId, req.UserName, req.MealType, req.Images, req.Description)
 			if err != nil {
+				logger.Error(mod, "发布帖子失败", "userId", req.UserId, "err", err)
 				res.Code = -1
 				res.ErrorMsg = err.Error()
 			} else {
+				logger.Info(mod, "发布帖子成功", "userId", req.UserId, "mealType", req.MealType, "耗时", time.Since(start))
 				res.Code = 1
 			}
 		}
@@ -106,6 +117,8 @@ func GetMealsHandler(w http.ResponseWriter, r *http.Request) {
 
 // GetMealDetailHandler 查询三餐帖子详情接口
 func GetMealDetailHandler(w http.ResponseWriter, r *http.Request) {
+	const mod = "帖子详情服务"
+	start := time.Now()
 
 	// 获取动态路由中的id
 	vars := mux.Vars(r)
@@ -117,11 +130,14 @@ func GetMealDetailHandler(w http.ResponseWriter, r *http.Request) {
 		userIdStr := r.URL.Query().Get("user_id")
 		userId, _ := strconv.Atoi(userIdStr)
 
+		logger.Info(mod, "查询帖子详情", "mealId", id, "userId", userId)
 		meal, err := meal.MealImp.GetMealById(int32(id), int32(userId))
 		if err != nil {
+			logger.Error(mod, "查询帖子详情失败", "mealId", id, "userId", userId, "err", err)
 			res.Code = -1
 			res.ErrorMsg = err.Error()
 		} else {
+			logger.Info(mod, "查询帖子详情成功", "mealId", id, "userId", userId, "耗时", time.Since(start))
 			res.Data.List = []*model.MealModel{meal}
 		}
 
@@ -141,19 +157,25 @@ func GetMealDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 // GetMealsCalendarHandler 用于日历高亮，查询一个月那几天有帖子
 func GetMealsCalendarHandler(w http.ResponseWriter, r *http.Request) {
+	const mod = "日历服务"
+	start := time.Now()
 	res := &MealsCalendarResponse{}
 	if r.Method == http.MethodGet {
 		year, err := strconv.Atoi(r.URL.Query().Get("year"))
 		month, err := strconv.Atoi(r.URL.Query().Get("month"))
 		if err != nil || month <= 0 || month >= 13 || year <= 0 || year >= 2100 {
+			logger.Warn(mod, "日历查询参数格式错误", "year", year, "month", month)
 			res.Code = -1
 			res.ErrorMsg = "日期格式错误"
 		} else {
+			logger.Info(mod, "查询月度日历", "year", year, "month", month)
 			dates, err := meal.MealImp.GetMealsCalendar(year, month)
 			if err != nil {
+				logger.Error(mod, "查询月度日历失败", "year", year, "month", month, "err", err)
 				res.Code = -1
 				res.ErrorMsg = err.Error()
 			} else {
+				logger.Info(mod, "查询月度日历成功", "year", year, "month", month, "dayCount", len(dates), "耗时", time.Since(start))
 				res.Data.Dates = dates
 			}
 		}

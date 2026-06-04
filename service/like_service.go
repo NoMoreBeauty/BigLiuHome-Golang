@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"wxcloudrun-golang/db/like"
+	"wxcloudrun-golang/logger"
 
 	"github.com/gorilla/mux"
 )
@@ -32,6 +34,9 @@ type LikeDto struct {
 
 // PostLikeHandler 点赞变更（包括点赞和取消）
 func PostLikeHandler(w http.ResponseWriter, r *http.Request) {
+	const mod = "点赞服务"
+	start := time.Now()
+
 	res := &LikesResponse{}
 	if r.Method == http.MethodPost {
 		// 1. 解析路由参数 meals/{id}/likes 中的帖子 id
@@ -42,15 +47,19 @@ func PostLikeHandler(w http.ResponseWriter, r *http.Request) {
 		// 2. 解析body中的参数
 		req, err := parsePostLikeRequest(r)
 		if err != nil {
+			logger.Warn(mod, "解析点赞请求失败", "mealId", mealId, "err", err)
 			res.Code = -1
 			res.ErrorMsg = fmt.Sprintf("解析点赞失败：%s", err.Error())
 		} else {
-			// 3. 调用数据访问层查询所有的平铺评论数据
+			logger.Info(mod, "收到点赞请求", "mealId", mealId, "userId", req.UserId, "userName", req.UserName)
+			// 3. 调用数据访问层执行点赞/取消点赞
 			isLiked, likesCount, err := like.MealLikeImp.PostLike(int32(mealId), req.UserId, req.UserName)
 			if err != nil {
+				logger.Error(mod, "点赞操作失败", "mealId", mealId, "userId", req.UserId, "err", err)
 				res.Code = -1
 				res.ErrorMsg = fmt.Sprintf("点赞失败：%s", err.Error())
 			} else {
+				logger.Info(mod, "点赞请求处理成功", "mealId", mealId, "userId", req.UserId, "isLiked", isLiked, "likesCount", likesCount, "耗时", time.Since(start))
 				res.Data = &LikeDto{
 					IsLiked:    isLiked,
 					LikesCount: likesCount,

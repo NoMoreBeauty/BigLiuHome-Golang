@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"wxcloudrun-golang/db/comment"
 	"wxcloudrun-golang/db/model"
+	"wxcloudrun-golang/logger"
 
 	"github.com/gorilla/mux"
 )
@@ -46,6 +48,8 @@ func GetMealCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	 *     - 将 parent_id > 0 的二级回复按 parent_id 归入对应的一级评论 replies 数组中
 	 *  4. 将组装好的嵌套数组返回给前端
 	 */
+	const mod = "评论服务"
+	start := time.Now()
 	res := &CommentsResponse{
 		Code: 0,
 		Data: make([]*CommentDto, 0),
@@ -57,14 +61,17 @@ func GetMealCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		mealIdStr := vars["id"]
 		mealId, _ := strconv.Atoi(mealIdStr)
 
+		logger.Info(mod, "查询帖子评论列表", "mealId", mealId)
 		// 2. 调用数据访问层查询所有的平铺评论数据
 		flatComments, err := comment.MealCommentImp.GetMealCommentsHandler(int32(mealId))
 		if err != nil {
+			logger.Error(mod, "查询评论列表失败", "mealId", mealId, "err", err)
 			res.Code = -1
 			res.ErrorMsg = fmt.Sprintf("获取评论失败：%s", err.Error())
 		} else {
 			// 3. 在内存中执行两层嵌套组装
 			res.Data = assembleComments(flatComments)
+			logger.Info(mod, "查询评论列表成功", "mealId", mealId, "flatCount", len(flatComments), "rootCount", len(res.Data), "耗时", time.Since(start))
 		}
 	} else {
 		res.Code = -1
@@ -84,6 +91,8 @@ func GetMealCommentsHandler(w http.ResponseWriter, r *http.Request) {
 
 // PostCommentHandler 插入评论
 func PostCommentHandler(w http.ResponseWriter, r *http.Request) {
+	const mod = "评论服务"
+	start := time.Now()
 	res := &CommentsResponse{
 		Code: 0,
 		Data: make([]*CommentDto, 0),
@@ -97,18 +106,22 @@ func PostCommentHandler(w http.ResponseWriter, r *http.Request) {
 		// 2. 解析请求体中的参数
 		req, err := parsePostCommentRequest(r)
 		if err != nil {
+			logger.Warn(mod, "解析发布评论请求失败", "mealId", mealId, "err", err)
 			res.Code = -1
 			res.ErrorMsg = fmt.Sprintf("解析评论失败：%s", err.Error())
 			return
 		}
 
+		logger.Info(mod, "收到发布评论请求", "mealId", mealId, "userId", req.UserId, "userName", req.UserName, "parentId", req.ParentId, "contentLen", len(req.Content))
 		// 3. 调用数据访问层插入评论数据
-		comment, err := comment.MealCommentImp.PostCommentHandler(int32(mealId), req.UserId, req.UserName, req.ParentId, req.ReplyToId, req.ReplyToName, req.Content)
+		newComment, err := comment.MealCommentImp.PostCommentHandler(int32(mealId), req.UserId, req.UserName, req.ParentId, req.ReplyToId, req.ReplyToName, req.Content)
 		if err != nil {
+			logger.Error(mod, "发布评论失败", "mealId", mealId, "userId", req.UserId, "err", err)
 			res.Code = -1
 			res.ErrorMsg = fmt.Sprintf("获取评论失败：%s", err.Error())
 		} else {
-			res.Data = append(res.Data, &CommentDto{MealCommentModel: comment})
+			logger.Info(mod, "发布评论成功", "mealId", mealId, "userId", req.UserId, "commentId", newComment.Id, "耗时", time.Since(start))
+			res.Data = append(res.Data, &CommentDto{MealCommentModel: newComment})
 		}
 	} else {
 		res.Code = -1

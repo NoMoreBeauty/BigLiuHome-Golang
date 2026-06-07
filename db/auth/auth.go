@@ -14,3 +14,11 @@ func (imp *UserInterfaceImp) Login(userKey string) (*model.UserModel, error) {
 	err := cli.Table(tableName).Where("user_key = ?", userKey).First(user).Error
 	return user, err
 }
+
+// GetMembers 获取所有家庭成员
+func (imp *UserInterfaceImp) GetMembers() ([]*model.UserModel, error) {
+	cli := db.Get()
+	var userList []*model.UserModel
+	err := cli.Table(tableName).Select("id, user_name").Find(&userList).Error
+	return userList, err
+}

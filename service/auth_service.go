@@ -62,3 +62,36 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	w.Write(msg)
 }
+
+// GetMembersHandler 返回家庭成员列表
+func GetMembersHandler(w http.ResponseWriter, r *http.Request) {
+	const mod = "拉取用户成员信息"
+	start := time.Now()
+	res := &AuthResponse{}
+
+	if r.Method == http.MethodGet {
+
+		logger.Info(mod, "收到拉取用户成员信息请求")
+		userList, err := auth.UserImp.GetMembers()
+		if err != nil {
+			res.Code = -1
+			logger.Error(mod, "拉取用户成员信息失败", "err", err)
+			res.ErrorMsg = "系统繁忙，请稍后再试" // 屏蔽真实的数据库报错，防止暴露安全信息
+		} else {
+			logger.Info(mod, "拉取用户成员信息成功", "耗时", time.Since(start))
+			res.Data = userList
+		}
+
+	} else {
+		res.Code = -1
+		res.ErrorMsg = fmt.Sprintf("请求方法 %s 不支持", r.Method)
+	}
+
+	msg, err := json.Marshal(res)
+	if err != nil {
+		fmt.Fprint(w, "内部错误")
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(msg)
+}

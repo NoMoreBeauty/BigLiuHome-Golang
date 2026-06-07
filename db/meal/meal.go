@@ -1,9 +1,12 @@
 package meal
 
 import (
+	"strconv"
 	"time"
 	"wxcloudrun-golang/db"
 	"wxcloudrun-golang/db/model"
+
+	"gorm.io/gorm"
 )
 
 const tableName = "meals"
@@ -42,11 +45,14 @@ func (imp *MealInterfaceImp) GetMeals(page, size, userId int32, date, mealType s
 		Offset(int(offset)).
 		Find(&meals).Error
 
+	// 查询 CompanionInfos
+	resolveCompanions(cli, meals)
+
 	return meals, err
 }
 
 // PostMeals 上传三餐帖子
-func (imp *MealInterfaceImp) PostMeals(userId int32, userName, mealType string, images []string, description string) error {
+func (imp *MealInterfaceImp) PostMeals(userId int32, userName, mealType string, images []string, description string, companions []string) error {
 	cli := db.Get()
 
 	var meal = &model.MealModel{
@@ -56,6 +62,7 @@ func (imp *MealInterfaceImp) PostMeals(userId int32, userName, mealType string, 
 		Images:      images,
 		Description: description,
 		CreatedAt:   time.Now().Unix(),
+		Companions:  companions,
 	}
 	err := cli.Table(tableName).Create(meal).Error
 	return err
@@ -75,6 +82,9 @@ func (imp *MealInterfaceImp) GetMealById(id, userId int32) (*model.MealModel, er
 	if err != nil {
 		return nil, err // 查询出错（例如没找到，会返回 gorm.ErrRecordNotFound）
 	}
+
+	// 查询 CompanionInfos
+	resolveCompanions(cli, []*model.MealModel{&meal})
 
 	return &meal, nil // 返回指针
 }
@@ -100,4 +110,53 @@ func (imp *MealInterfaceImp) GetMealsCalendar(year, month int) ([]string, error)
 		return nil, err
 	}
 	return dates, nil
+}
+
+// resolveCompanions 批量解析同桌人 ID → {id, name}，复用于 GetMeals 和 GetMealById
+func resolveCompanions(cli *gorm.DB, meals []*model.MealModel) error {
+	// 收集所有唯一 ID
+	idSet := make(map[string]struct{})
+	for _, meal := range meals {
+		for _, id := range meal.Companions {
+			idSet[id] = struct{}{} // 自动去重
+		}
+		// 初始化，这样序列化的时候不是null而是[]
+		meal.CompanionInfos = make([]model.CompanionInfo, 0)
+	}
+	ids := make([]string, 0, len(idSet))
+	for id := range idSet {
+		ids = append(ids, id)
+	}
+	// 如果没有共同用餐的人，直接返回
+	if len(ids) == 0 {
+		return nil
+	}
+
+	// id -> name 映射
+	idNameMap := make(map[int32]string, 0)
+	// 查询条件
+	var users []*model.UserModel
+	err := cli.Table("users").Select("id, user_name").Where("id IN ?", ids).Find(&users).Error
+	if err != nil {
+		return err
+	}
+
+	// 填充映射表
+	for _, user := range users {
+		idNameMap[user.Id] = user.UserName
+	}
+
+	// 填充 companion_infos 列表
+	for _, meal := range meals {
+		for _, id := range meal.Companions {
+			idInt, _ := strconv.Atoi(id)
+			meal.CompanionInfos = append(meal.CompanionInfos, model.CompanionInfo{
+				Id:   int32(idInt),
+				Name: idNameMap[int32(idInt)],
+			})
+
+		}
+	}
+
+	return nil
 }

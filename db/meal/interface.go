@@ -6,7 +6,7 @@ import "wxcloudrun-golang/db/model"
 type MealInterface interface {
 	GetMeals(page, size, userId int32, date, mealType string) ([]*model.MealModel, error)
 	GetMealById(id, userId int32) (*model.MealModel, error)
-	PostMeals(userId int32, userName, mealType string, images []string, description string) error
+	PostMeals(userId int32, userName, mealType string, images []string, description string, companions []string) error
 	GetMealsCalendar(year, month int) ([]string, error)
 }
 

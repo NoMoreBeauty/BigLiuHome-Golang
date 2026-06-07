@@ -29,16 +29,24 @@ func (a StringArray) Value() (driver.Value, error) {
 
 // MealModel 三餐帖子数据模型
 type MealModel struct {
-	Id            int32       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	UserId        int32       `gorm:"column:user_id" json:"user_id"`
-	UserName      string      `gorm:"column:user_name" json:"user_name"`
-	MealType      string      `gorm:"column:meal_type" json:"meal_type"`
-	Images        StringArray `gorm:"column:images" json:"images"`
-	Description   string      `gorm:"column:description" json:"description"`
-	LikesCount    int32       `gorm:"column:likes_count" json:"likes_count"`
-	CommentsCount int32       `gorm:"column:comments_count" json:"comments_count"`
-	CreatedAt     int64       `gorm:"column:created_at" json:"created_at"`
-	IsLiked       bool        `gorm:"column:is_liked;->" json:"is_liked"` // 添加只读的 is_liked 动态计算字段，Insert和Update不受影响
+	Id             int32           `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	UserId         int32           `gorm:"column:user_id" json:"user_id"`
+	UserName       string          `gorm:"column:user_name" json:"user_name"`
+	MealType       string          `gorm:"column:meal_type" json:"meal_type"`
+	Images         StringArray     `gorm:"column:images" json:"images"`
+	Description    string          `gorm:"column:description" json:"description"`
+	LikesCount     int32           `gorm:"column:likes_count" json:"likes_count"`
+	CommentsCount  int32           `gorm:"column:comments_count" json:"comments_count"`
+	CreatedAt      int64           `gorm:"column:created_at" json:"created_at"`
+	Companions     StringArray     `gorm:"column:companions" json:"-"` // 共同用餐的人
+	CompanionInfos []CompanionInfo `gorm:"-" json:"companions"`
+	IsLiked        bool            `gorm:"column:is_liked;->" json:"is_liked"` // 添加只读的 is_liked 动态计算字段，Insert和Update不受影响
+}
+
+// CompanionInfo 因为查询的时候要带上用户的name
+type CompanionInfo struct {
+	Id   int32  `json:"id"`
+	Name string `json:"name"`
 }
 
 // MealCommentModel 三餐帖子评论模型

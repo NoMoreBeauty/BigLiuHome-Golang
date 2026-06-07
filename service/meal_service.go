@@ -30,6 +30,7 @@ type PostMealRequest struct {
 	MealType    string   `json:"meal_type"`
 	Images      []string `json:"images"`
 	Description string   `json:"description"`
+	Companions  []string `json:"companions"` // 共同用餐的人
 }
 
 // MealsResponse 三餐帖子返回结构(Get/Post)
@@ -56,8 +57,8 @@ type MealsCalendarResponse struct {
 	} `json:"data"`
 }
 
-// GetMealsHandler 查询三餐帖子列表接口
-func GetMealsHandler(w http.ResponseWriter, r *http.Request) {
+// MealsHandler 查询/解析三餐帖子列表接口
+func MealsHandler(w http.ResponseWriter, r *http.Request) {
 	const mod = "帖子服务"
 	start := time.Now()
 	res := &MealsResponse{}
@@ -91,7 +92,7 @@ func GetMealsHandler(w http.ResponseWriter, r *http.Request) {
 			res.ErrorMsg = err.Error()
 		} else {
 			logger.Info(mod, "收到发布帖子请求", "userId", req.UserId, "userName", req.UserName, "mealType", req.MealType, "imageCount", len(req.Images))
-			err = meal.MealImp.PostMeals(req.UserId, req.UserName, req.MealType, req.Images, req.Description)
+			err = meal.MealImp.PostMeals(req.UserId, req.UserName, req.MealType, req.Images, req.Description, req.Companions)
 			if err != nil {
 				logger.Error(mod, "发布帖子失败", "userId", req.UserId, "err", err)
 				res.Code = -1
